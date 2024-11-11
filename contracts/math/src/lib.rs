@@ -1,8 +1,5 @@
 #![no_std]
-use soroban_sdk::{
-    contract, contractimpl, contracttype,
-    symbol_short, vec, Env, Error, Val, IntoVal, String, Symbol, TryFromVal, TryIntoVal, Vec
-};
+use soroban_sdk::{contract, contractimpl, symbol_short, vec, Env, Error, Val, IntoVal, String, Symbol, TryFromVal, TryIntoVal, Vec};
 
 #[derive(Clone)]
 pub struct Operation {
@@ -70,7 +67,7 @@ pub struct CalculatorContract;
 
 #[contractimpl]
 impl CalculatorContract {
-    pub fn add(env: Env, operand1: i32, operand2: i32) -> i32 {
+    pub fn sum(env: Env, operand1: i32, operand2: i32) -> i32 {
         let result = operand1 + operand2;
         let operation: Operation = Operation { operation_type: String::from_str(&env, "addition"), operand1, operand2, result };
 
@@ -78,15 +75,15 @@ impl CalculatorContract {
         result
     }
 
-    pub fn subtract(env: Env, operand1: i32, operand2: i32) -> i32 {
-        let result: i32 = operand1 - operand2;
-        let operation: Operation = Operation { operation_type: String::from_str(&env, "subtration"), operand1, operand2, result };
+    pub fn sub(env: Env, operand1: i32, operand2: i32) -> i32 {
+        let result: i32 = (operand1 - operand2).abs();
+        let operation: Operation = Operation { operation_type: String::from_str(&env, "subtraction"), operand1, operand2, result };
 
         Self::save_operation(&env, operation);
         result
     }
 
-    pub fn multiply(env: Env, operand1: i32, operand2: i32) -> i32 {
+    pub fn mul(env: Env, operand1: i32, operand2: i32) -> i32 {
         let result: i32 = operand1 * operand2;
         let operation: Operation = Operation { operation_type: String::from_str(&env, "multiplication"), operand1, operand2, result };
         
@@ -94,7 +91,7 @@ impl CalculatorContract {
         result
     }
 
-    pub fn divide(env: Env, operand1: i32, operand2: i32) -> Option<i32> {
+    pub fn div(env: Env, operand1: i32, operand2: i32) -> Option<i32> {
         if operand2 == 0 {
             return None; // Retorna None se o divisor for zero
         }
@@ -118,16 +115,20 @@ impl CalculatorContract {
         env.storage().persistent().set(&OPERATIONS_HISTORY, &operations_history);
     }
 
-    pub fn get_history(env: Env) -> Vec<Operation> {
+    pub fn all_op(env: Env) -> Vec<Operation> {
         env.storage().persistent().get(&OPERATIONS_HISTORY).unwrap_or_else(|| Vec::new(&env))
     }
 
-    pub fn get_operation(env: Env, index: u32) -> Option<Operation> {
+    pub fn get_op(env: Env, index: u32) -> Option<Operation> {
         let history: Vec<Operation> = env
             .storage()
             .persistent()
             .get(&OPERATIONS_HISTORY)
             .unwrap_or_else(|| Vec::new(&env));
         history.get(index)
+    }
+
+    pub fn last_op(env: Env) -> Option<Operation> {
+        env.storage().persistent().get(&LAST_OPERATION)
     }
 }
