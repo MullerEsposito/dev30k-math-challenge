@@ -4,21 +4,21 @@ use soroban_sdk::{contract, contractimpl, symbol_short, vec, Env, Error, Val, In
 #[derive(Clone)]
 pub struct Operation {
     pub operation_type: String,
-    pub operand1: i32,
-    pub operand2: i32,
-    pub result: i32,
+    pub x: u32,
+    pub y: u32,
+    pub result: u32,
 }
 
 impl TryFromVal<Env, Val> for Operation {
     type Error = Error;
 
     fn try_from_val(env: &Env, v: &Val) -> Result<Self, Self::Error> {
-        let tuple: (String, i32, i32, i32) = v.try_into_val(env)?;
+        let tuple: (String, u32, u32, u32) = v.try_into_val(env)?;
 
         Ok(Operation {
             operation_type: tuple.0,
-            operand1: tuple.1,
-            operand2: tuple.2,
+            x: tuple.1,
+            y: tuple.2,
             result: tuple.3,
         })
     }
@@ -53,7 +53,7 @@ impl TryFromVal<Env, Operation> for Val {
     type Error = Error;
 
     fn try_from_val(env: &Env, v: &Operation) -> Result<Self, Self::Error> {
-        Ok((v.operation_type.clone(), v.operand1, v.operand2, v.result).into_val(env))
+        Ok((v.operation_type.clone(), v.x, v.y, v.result).into_val(env))
     }
 }
 
@@ -67,36 +67,37 @@ pub struct CalculatorContract;
 
 #[contractimpl]
 impl CalculatorContract {
-    pub fn sum(env: Env, operand1: i32, operand2: i32) -> i32 {
-        let result = operand1 + operand2;
-        let operation: Operation = Operation { operation_type: String::from_str(&env, "addition"), operand1, operand2, result };
+    //Como trato overflow nesta função de soma?
+    pub fn sum(env: Env, x: u32, y: u32) -> Option<u32> {
+        let result = x.checked_add(y).unwrap_or(u32::MAX);
+        let operation: Operation = Operation { operation_type: String::from_str(&env, "addition"), x, y, result };
+
+        Self::save_operation(&env, operation);
+        Some(result)
+    }
+
+    pub fn sub(env: Env, x: u32, y: u32) -> u32 {
+        let result: u32 = if x >= y { x.checked_sub(y).unwrap_or(0) } else { y.checked_sub(x).unwrap_or(0) };
+        let operation: Operation = Operation { operation_type: String::from_str(&env, "subtraction"), x, y, result };
 
         Self::save_operation(&env, operation);
         result
     }
 
-    pub fn sub(env: Env, operand1: i32, operand2: i32) -> i32 {
-        let result: i32 = (operand1 - operand2).abs();
-        let operation: Operation = Operation { operation_type: String::from_str(&env, "subtraction"), operand1, operand2, result };
-
-        Self::save_operation(&env, operation);
-        result
-    }
-
-    pub fn mul(env: Env, operand1: i32, operand2: i32) -> i32 {
-        let result: i32 = operand1 * operand2;
-        let operation: Operation = Operation { operation_type: String::from_str(&env, "multiplication"), operand1, operand2, result };
+    pub fn mul(env: Env, x: u32, y: u32) -> u32 {
+        let result: u32 = x * y;
+        let operation: Operation = Operation { operation_type: String::from_str(&env, "multiplication"), x, y, result };
         
         Self::save_operation(&env, operation);
         result
     }
 
-    pub fn div(env: Env, operand1: i32, operand2: i32) -> Option<i32> {
-        if operand2 == 0 {
-            return None; // Retorna None se o divisor for zero
+    pub fn div(env: Env, x: u32, y: u32) -> Option<u32> {
+        if y == 0 {
+            return Some(u32::MAX); // Retorna None se o divisor for zero
         }
-        let result: i32 = operand1 / operand2;
-        let operation: Operation = Operation { operation_type: String::from_str(&env, "division"), operand1, operand2, result };
+        let result: u32 = x / y;
+        let operation: Operation = Operation { operation_type: String::from_str(&env, "division"), x, y, result };
         
         Self::save_operation(&env, operation);
         Some(result)
